@@ -1,0 +1,155 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>AI Call Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-100 min-h-screen">
+  <div class="max-w-6xl mx-auto p-6">
+
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h1 class="text-3xl font-bold">AI Call Dashboard</h1>
+        <p class="text-gray-600">Transcribe calls + score leads (offline Whisper)</p>
+      </div>
+      <a href="/" class="bg-blue-600 text-white px-4 py-2 rounded-xl font-semibold hover:bg-blue-700">
+        Upload New Call
+      </a>
+    </div>
+
+    {% if leads|length == 0 %}
+      <div class="bg-white rounded-2xl shadow p-6">
+        <p class="text-gray-700">No leads yet. Click <b>Upload New Call</b> to add one.</p>
+      </div>
+    {% endif %}
+
+    <div class="space-y-4">
+      {% for l in leads %}
+        {% set a = l.get("analysis", {}) %}
+        {% set label = a.get("lead_label", "unknown") %}
+        {% set score = a.get("lead_score_0_100", "?") %}
+        {% set intent = a.get("intent", "unknown") %}
+        {% set extracted_budget = a.get("budget", "unknown") %}
+        {% set extracted_timeline = a.get("timeline", "unknown") %}
+        {% set next_action = a.get("next_action", "") %}
+        {% set bullets = a.get("summary_bullets", []) %}
+        {% set reasons = a.get("reasons", []) %}
+        {% set err = a.get("error", "") %}
+
+        <div class="bg-white rounded-2xl shadow p-6">
+
+          <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+            <div>
+              <div class="text-lg font-semibold">
+                {{ l.get("name") or "Unknown" }}
+                <span class="text-gray-500 font-normal">— {{ l.get("phone") or "No phone" }}</span>
+              </div>
+
+              <div class="text-sm text-gray-600 mt-1">
+                <span class="font-medium">Product:</span> {{ l.get("product") or "Unknown" }}
+                <span class="mx-2">|</span>
+                <span class="font-medium">Source:</span> {{ l.get("source") or "-" }}
+                <span class="mx-2">|</span>
+                <span class="font-medium">Created:</span> {{ l.get("created_at") or "-" }}
+              </div>
+
+              <div class="text-sm text-gray-600 mt-1">
+                <span class="font-medium">Form Budget:</span> {{ l.get("budget") or "-" }}
+                <span class="mx-2">|</span>
+                <span class="font-medium">Form Timeline:</span> {{ l.get("timeline") or "-" }}
+              </div>
+
+              <div class="text-sm text-gray-500 mt-1">
+                <span class="font-medium">File:</span> {{ l.get("filename") }}
+              </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+              <!-- Badge -->
+              {% if label == "hot" %}
+                <span class="px-3 py-1 rounded-full text-sm font-semibold bg-red-100 text-red-700">HOT</span>
+              {% elif label == "warm" %}
+                <span class="px-3 py-1 rounded-full text-sm font-semibold bg-yellow-100 text-yellow-700">WARM</span>
+              {% elif label == "cold" %}
+                <span class="px-3 py-1 rounded-full text-sm font-semibold bg-gray-200 text-gray-700">COLD</span>
+              {% else %}
+                <span class="px-3 py-1 rounded-full text-sm font-semibold bg-blue-100 text-blue-700">UNKNOWN</span>
+              {% endif %}
+
+              <!-- Score -->
+              <div class="text-right">
+                <div class="text-2xl font-bold leading-tight">{{ score }}</div>
+                <div class="text-xs text-gray-500">score / 100</div>
+              </div>
+            </div>
+          </div>
+
+          <hr class="my-4">
+
+          {% if err %}
+            <div class="p-4 rounded-xl bg-red-50 text-red-700 text-sm">
+              <b>Error:</b> {{ err }}
+            </div>
+          {% else %}
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div class="bg-gray-50 p-4 rounded-xl">
+                <div class="text-sm text-gray-500">Intent</div>
+                <div class="font-semibold mt-1">{{ intent }}</div>
+              </div>
+
+              <div class="bg-gray-50 p-4 rounded-xl">
+                <div class="text-sm text-gray-500">Extracted Budget</div>
+                <div class="font-semibold mt-1">{{ extracted_budget }}</div>
+              </div>
+
+              <div class="bg-gray-50 p-4 rounded-xl">
+                <div class="text-sm text-gray-500">Extracted Timeline</div>
+                <div class="font-semibold mt-1">{{ extracted_timeline }}</div>
+              </div>
+            </div>
+
+            <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="bg-gray-50 p-4 rounded-xl">
+                <div class="font-semibold">Summary</div>
+                <ul class="list-disc ml-5 mt-2 text-sm text-gray-700 space-y-1">
+                  {% for b in bullets %}
+                    <li>{{ b }}</li>
+                  {% endfor %}
+                </ul>
+              </div>
+
+              <div class="bg-gray-50 p-4 rounded-xl">
+                <div class="font-semibold">Next Action</div>
+                <div class="mt-2 text-sm text-gray-700">{{ next_action }}</div>
+
+                {% if reasons|length > 0 %}
+                  <div class="mt-3 text-xs text-gray-500">
+                    <div class="font-semibold mb-1">Why this score?</div>
+                    <ul class="list-disc ml-5 space-y-1">
+                      {% for r in reasons %}
+                        <li>{{ r }}</li>
+                      {% endfor %}
+                    </ul>
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+
+          {% endif %}
+
+          <details class="mt-4">
+            <summary class="cursor-pointer font-semibold text-blue-700 hover:underline">
+              Transcript
+            </summary>
+            <pre class="mt-3 bg-gray-900 text-gray-100 p-4 rounded-xl text-sm whitespace-pre-wrap">{{ l.get("transcript") }}</pre>
+          </details>
+
+        </div>
+      {% endfor %}
+    </div>
+
+  </div>
+</body>
+</html>
